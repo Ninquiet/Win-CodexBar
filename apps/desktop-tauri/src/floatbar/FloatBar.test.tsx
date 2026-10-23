@@ -42,12 +42,15 @@ import type {
   SettingsSnapshot,
 } from "../types/bridge";
 
+const WEEK = 7 * 24 * 60;
+
 type RateWindowOptions = {
   exhausted?: boolean;
   informational?: boolean;
   resetsAt?: string | null;
   resetDescription?: string | null;
   descriptionIsDetail?: boolean;
+  windowMinutes?: number | null;
 };
 
 function rateWindow(
@@ -57,7 +60,7 @@ function rateWindow(
   return {
     usedPercent: used,
     remainingPercent: 100 - used,
-    windowMinutes: null,
+    windowMinutes: opts.windowMinutes ?? null,
     resetsAt: opts.resetsAt ?? null,
     resetDescription: opts.resetDescription ?? null,
     isExhausted: opts.exhausted ?? false,
@@ -86,6 +89,7 @@ function snapshot(
       informational?: boolean;
       resetsAt?: string | null;
       resetDescription?: string | null;
+      windowMinutes?: number | null;
     };
     selected?: {
       used: number;
@@ -690,7 +694,7 @@ describe("FloatBar", () => {
     tauriMocks.getCachedProviders.mockResolvedValue([
       snapshot("codex", "Codex", 16, {
         resetsAt: sessionReset,
-        secondary: { used: 36, resetsAt: weeklyReset },
+        secondary: { used: 36, resetsAt: weeklyReset, windowMinutes: WEEK },
         selected: { used: 36, resetsAt: weeklyReset },
       }),
     ]);
@@ -718,7 +722,7 @@ describe("FloatBar", () => {
 
   it("takes the worse tone of the session and weekly windows", async () => {
     tauriMocks.getCachedProviders.mockResolvedValue([
-      snapshot("codex", "Codex", 10, { secondary: { used: 95 } }),
+      snapshot("codex", "Codex", 10, { secondary: { used: 95, windowMinutes: WEEK } }),
     ]);
     tauriMocks.getSettingsSnapshot.mockResolvedValue(settings({ floatBarShowWeekly: true }));
 
@@ -727,6 +731,26 @@ describe("FloatBar", () => {
     await waitFor(() => {
       expect(container.querySelector(".floatbar__pill--crit")).not.toBeNull();
     });
+  });
+
+  it("keeps the single metric when the secondary lane is not a 7-day window", async () => {
+    tauriMocks.getCachedProviders.mockResolvedValue([
+      snapshot("codex", "Codex", 10, {
+        secondary: { used: 60, windowMinutes: 30 * 24 * 60 },
+        selected: { used: 10 },
+      }),
+    ]);
+    tauriMocks.getSettingsSnapshot.mockResolvedValue(settings({ floatBarShowWeekly: true }));
+
+    const { container } = renderFloatBar(bootstrap({ floatBarShowWeekly: true }));
+
+    await waitFor(() => {
+      const percents = Array.from(container.querySelectorAll(".floatbar__pct")).map(
+        (el) => el.textContent,
+      );
+      expect(percents).toEqual(["10%"]);
+    });
+    expect(container.querySelector(".floatbar__divider")).toBeNull();
   });
 
   it("falls back to the single metric when the weekly window is missing", async () => {

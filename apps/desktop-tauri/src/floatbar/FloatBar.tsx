@@ -24,7 +24,7 @@ import { costPeriodShortLabel } from "../lib/costPeriod";
 import { describeProviderState } from "../lib/providerState";
 import { resetDescriptionFallback, windowDetailText } from "../lib/usageWindows";
 import { localizeProviderText } from "../lib/providerText";
-import { type MetricLane, quotaWarningWindowForLane } from "../lib/metricRowModel";
+import { type MetricLane, quotaWarningWindowForLane, WEEK_MINUTES } from "../lib/metricRowModel";
 import { type QuotaWarningSettings, resolveQuotaWarning } from "../lib/quotaWarnings";
 import type {
   BootstrapState,
@@ -221,13 +221,21 @@ const TONE_RANK: Record<PillTone, number> = { ok: 0, warn: 1, crit: 2 };
 type PillMetric = { window: RateWindowSnapshot; lane: MetricLane | null };
 
 /**
- * The metrics a pill shows. With "Show Session and Weekly" on and both core
- * lanes reporting a quota, that is the session lane followed by the weekly
- * lane; otherwise it is the single menu bar metric.
+ * The metrics a pill shows. With "Show Session and Weekly" on, a primary quota
+ * and a real 7-day secondary lane, that is the session lane followed by the
+ * weekly lane. The secondary slot is not always weekly (some providers put a
+ * monthly or account quota there), so any other shape keeps the single menu
+ * bar metric.
  */
 function pillMetrics(provider: ProviderUsageSnapshot, showWeekly: boolean): PillMetric[] {
   const { primary, secondary } = provider;
-  if (showWeekly && !primary.isInformational && secondary && !secondary.isInformational) {
+  if (
+    showWeekly &&
+    !primary.isInformational &&
+    secondary &&
+    !secondary.isInformational &&
+    secondary.windowMinutes === WEEK_MINUTES
+  ) {
     return [
       { window: primary, lane: "primary" },
       { window: secondary, lane: "secondary" },
