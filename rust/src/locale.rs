@@ -1541,6 +1541,8 @@ locale_keys! {
     FloatBarSizeAriaLabel,
     FloatBarShowResetInline,
     FloatBarShowResetInlineHelper,
+    FloatBarShowWeekly,
+    FloatBarShowWeeklyHelper,
     FloatBarInvertColors,
     FloatBarInvertColorsHelper,
     FloatBarClickThrough,
